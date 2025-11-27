@@ -1,8 +1,8 @@
 {
   "name": "md-to-pdf-converter",
   "displayName": "Markdown to PDF Converter",
-  "description": "Convert Markdown files with Mermaid diagrams to PDF using convert-md-to-pdf.py script",
-  "version": "1.0.0",
+  "description": "Convert Markdown files with Mermaid diagrams to PDF",
+  "version": "2.0.0",
   "publisher": "dfn",
   "repository": {
     "type": "git",
@@ -35,15 +35,16 @@
     "configuration": {
       "title": "Markdown to PDF Converter",
       "properties": {
-        "mdToPdfConverter.pythonPath": {
+        "mdToPdfConverter.format": {
           "type": "string",
-          "default": "python3",
-          "description": "Path to Python executable (python3, python, or full path)"
+          "default": "A4",
+          "enum": ["A4", "Letter", "Legal"],
+          "description": "PDF page format"
         },
-        "mdToPdfConverter.scriptPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to convert-md-to-pdf.py script (leave empty to use script in same directory as markdown file)"
+        "mdToPdfConverter.scale": {
+          "type": "number",
+          "default": 1,
+          "description": "Scale of the PDF (0.1 - 2.0)"
         }
       }
     }
@@ -58,7 +59,13 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src --ext ts"
   },
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "^11.4.0",
+    "markdown-it": "^14.0.0",
+    "puppeteer": "^23.0.0"
+  },
   "devDependencies": {
+    "@types/markdown-it": "^14.0.0",
     "@types/node": "^20.x",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.x",

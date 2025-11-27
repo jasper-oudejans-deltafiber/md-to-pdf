@@ -13,7 +13,13 @@ async function main() {
     sourcesContent: false,
     platform: 'node',
     outfile: 'dist/extension.js',
-    external: ['vscode'],
+    external: [
+      'vscode',
+      // Keep these external - they'll be in node_modules at runtime
+      'puppeteer',
+      'markdown-it',
+      '@mermaid-js/mermaid-cli'
+    ],
     logLevel: 'silent',
     plugins: [
       {
