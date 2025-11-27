@@ -1,13 +1,14 @@
 # Markdown to PDF Converter
 
-Convert Markdown files with Mermaid diagrams to PDF using the `convert-md-to-pdf.py` script.
+Convert Markdown files with Mermaid diagrams to PDF - works out of the box, no setup required.
 
 ## Features
 
 - Right-click context menu on `.md` files in Explorer
-- Automatically finds `convert-md-to-pdf.py` script in the same directory as your markdown file
-- Shows progress notification during conversion
-- Opens the generated PDF with one click
+- Renders Mermaid diagrams as high-quality images
+- GitHub-flavored Markdown styling
+- Configurable PDF format (A4, Letter, Legal)
+- Works on Windows, macOS, and Linux
 
 ## Usage
 
@@ -16,38 +17,37 @@ Convert Markdown files with Mermaid diagrams to PDF using the `convert-md-to-pdf
 3. Wait for the conversion to complete
 4. Click "Open PDF" to view the result
 
-## Requirements
-
-- Python 3 installed and accessible
-- `convert-md-to-pdf.py` script available
-- Python dependencies: `mmdc` (Mermaid CLI) and `mdpdf`
-
 ## Extension Settings
 
-This extension contributes the following settings:
-
-* `mdToPdfConverter.pythonPath`: Path to Python executable (default: `python3`)
-* `mdToPdfConverter.scriptPath`: Path to `convert-md-to-pdf.py` script (leave empty to auto-detect in markdown file directory)
+* `mdToPdfConverter.format`: PDF page format - `A4` (default), `Letter`, or `Legal`
+* `mdToPdfConverter.scale`: Scale of the PDF (0.1 - 2.0, default: 1)
 
 ## Installation
 
-### From VSIX (Recommended)
+### From VSIX
 
-1. Package the extension: `npm run package && vsce package`
-2. Install in VS Code: Extensions → ... menu → Install from VSIX
+1. Download `md-to-pdf-converter-2.0.0.vsix`
+2. In VS Code: Extensions → `...` menu → "Install from VSIX..."
 
-### Development Mode
+### From Source
 
-1. Open this folder in VS Code
-2. Press F5 to launch Extension Development Host
-3. Test the extension in the new window
+```bash
+git clone https://github.com/jasper-oudejans-deltafiber/md-to-pdf.git
+cd md-to-pdf
+npm install
+npx @vscode/vsce package
+code --install-extension md-to-pdf-converter-2.0.0.vsix
+```
 
 ## Release Notes
 
+### 2.0.0
+
+- Complete rewrite in TypeScript
+- No external dependencies required (Python, mmdc, mdpdf)
+- Everything bundled - works out of the box
+- Cross-platform support (Windows, macOS, Linux)
+
 ### 1.0.0
 
-Initial release:
-- Context menu integration for .md files
-- Auto-detection of conversion script
-- Progress notifications
-- PDF preview integration
+Initial release (required Python and external tools)
