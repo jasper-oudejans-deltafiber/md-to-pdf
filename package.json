@@ -1,0 +1,71 @@
+{
+  "name": "md-to-pdf-converter",
+  "displayName": "Markdown to PDF Converter",
+  "description": "Convert Markdown files with Mermaid diagrams to PDF using convert-md-to-pdf.py script",
+  "version": "1.0.0",
+  "publisher": "dfn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jasper-oudejans-deltafiber/md-to-pdf.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "md-to-pdf-converter.convertToPdf",
+        "title": "Convert to PDF (with Mermaid)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "md-to-pdf-converter.convertToPdf",
+          "when": "resourceExtname == .md",
+          "group": "navigation@10"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Markdown to PDF Converter",
+      "properties": {
+        "mdToPdfConverter.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to Python executable (python3, python, or full path)"
+        },
+        "mdToPdfConverter.scriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to convert-md-to-pdf.py script (leave empty to use script in same directory as markdown file)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && node esbuild.js --production",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "esbuild": "^0.19.0",
+    "eslint": "^8.x",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.2.0"
+  }
+}

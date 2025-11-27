@@ -1,0 +1,14 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+.yarnrc
+esbuild.js
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+# Exclude node_modules but allow local installation at runtime
+node_modules/**
+# Keep the scripts folder - we need it in the extension
+!scripts/**
