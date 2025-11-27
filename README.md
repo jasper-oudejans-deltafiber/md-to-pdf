@@ -24,11 +24,6 @@ Convert Markdown files with Mermaid diagrams to PDF - works out of the box, no s
 
 ## Installation
 
-### From VSIX
-
-1. Download `md-to-pdf-converter-2.0.0.vsix`
-2. In VS Code: Extensions → `...` menu → "Install from VSIX..."
-
 ### From Source
 
 ```bash
@@ -38,6 +33,11 @@ npm install
 npx @vscode/vsce package
 code --install-extension md-to-pdf-converter-2.0.0.vsix
 ```
+
+### From VSIX (if shared directly)
+
+1. Receive the `.vsix` file from a colleague
+2. In VS Code: Extensions → `...` menu → "Install from VSIX..."
 
 ## Release Notes
 
