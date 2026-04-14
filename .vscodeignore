@@ -13,7 +13,6 @@ scripts/**
 ROADMAP.md
 
 # Exclude dev dependencies entirely
-node_modules/.bin/**
 node_modules/@types/**
 node_modules/@typescript-eslint/**
 node_modules/typescript/**

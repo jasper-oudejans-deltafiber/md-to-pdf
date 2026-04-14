@@ -21,6 +21,7 @@ async function convertMarkdownToPdf(uri: vscode.Uri, context: vscode.ExtensionCo
     const config = vscode.workspace.getConfiguration('mdToPdfConverter');
     const format = config.get<string>('format') || 'A4';
     const scale = config.get<number>('scale') || 1;
+    const diagramMaxHeight = config.get<number>('diagramMaxHeight') || 400;
 
     const markdownPath = uri.fsPath;
     const outputPdf = markdownPath.replace(/\.md$/i, '.pdf');
@@ -37,7 +38,7 @@ async function convertMarkdownToPdf(uri: vscode.Uri, context: vscode.ExtensionCo
                 const markdownContent = fs.readFileSync(markdownPath, 'utf-8');
                 
                 progress.report({ message: 'Processing Mermaid diagrams...' });
-                const { html, tempDir } = await processMarkdownWithMermaid(markdownContent, context);
+                const { html, tempDir } = await processMarkdownWithMermaid(markdownContent, context, diagramMaxHeight);
                 
                 progress.report({ message: 'Generating PDF...' });
                 await generatePdf(html, outputPdf, format, scale);
@@ -63,7 +64,7 @@ async function convertMarkdownToPdf(uri: vscode.Uri, context: vscode.ExtensionCo
     );
 }
 
-async function processMarkdownWithMermaid(markdown: string, context: vscode.ExtensionContext): Promise<{ html: string; tempDir: string | null }> {
+async function processMarkdownWithMermaid(markdown: string, context: vscode.ExtensionContext, diagramMaxHeight: number = 400): Promise<{ html: string; tempDir: string | null }> {
     const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
     const matches = [...markdown.matchAll(mermaidRegex)];
     
@@ -73,10 +74,11 @@ async function processMarkdownWithMermaid(markdown: string, context: vscode.Exte
     if (matches.length > 0) {
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'md2pdf-'));
         
-        const isWindows = process.platform === 'win32';
-        const mmdcBin = isWindows ? 'mmdc.cmd' : 'mmdc';
-        const mmdcPath = path.join(context.extensionPath, 'node_modules', '.bin', mmdcBin);
+        // Use the actual CLI script path instead of symlinks (symlinks not packaged by vsce)
+        const mmdcScript = path.join(context.extensionPath, 'node_modules', '@mermaid-js', 'mermaid-cli', 'src', 'cli.js');
         
+        const failedDiagrams: string[] = [];
+
         for (let i = 0; i < matches.length; i++) {
             const match = matches[i];
             const mermaidCode = match[1];
@@ -85,31 +87,85 @@ async function processMarkdownWithMermaid(markdown: string, context: vscode.Exte
             
             fs.writeFileSync(mmdFile, mermaidCode);
             
-            await new Promise<void>((resolve, reject) => {
-                const proc = spawn(mmdcPath, [
-                    '-i', mmdFile,
-                    '-o', imagePath,
-                    '-b', 'white',
-                    '-s', '3',
-                    '-w', '2400',
-                    '-H', '1600'
-                ], { shell: isWindows });
-                
-                proc.on('close', (code: number) => {
-                    if (code === 0) {
-                        resolve();
-                    } else {
-                        reject(new Error(`mmdc failed with code ${code}`));
-                    }
+            let renderSuccess = false;
+            let renderError = '';
+            
+            try {
+                await new Promise<void>((resolve, reject) => {
+                    // Run via node instead of the symlink
+                    const proc = spawn('node', [
+                        mmdcScript,
+                        '-i', mmdFile,
+                        '-o', imagePath,
+                        '-b', 'white',
+                        '-s', '2',
+                        '-w', '1200',
+                        '-H', '800'
+                    ], { shell: process.platform === 'win32' });
+                    
+                    let stderr = '';
+                    let stdout = '';
+                    proc.stdout?.on('data', (data: Buffer) => { stdout += data.toString(); });
+                    proc.stderr?.on('data', (data: Buffer) => { stderr += data.toString(); });
+                    
+                    proc.on('close', (code: number) => {
+                        if (code === 0) {
+                            resolve();
+                        } else {
+                            const details = (stderr + '\n' + stdout).trim() || 'No output captured';
+                            reject(new Error(details));
+                        }
+                    });
+                    proc.on('error', (err: Error) => {
+                        reject(new Error(`Failed to launch mmdc: ${err.message}`));
+                    });
                 });
-                proc.on('error', reject);
+                renderSuccess = true;
+            } catch (err) {
+                renderError = err instanceof Error ? err.message : String(err);
+                // Extract the most useful part of the error (the Parse error line)
+                const parseErrorMatch = renderError.match(/(?:Error: )?(Parse error on line \d+:[\s\S]*?)(?:\n\s*at\s|Parser3)/);
+                const shortError = parseErrorMatch ? parseErrorMatch[1].trim() : renderError.split('\n').slice(0, 3).join('\n');
+                failedDiagrams.push(`Diagram ${i + 1}: ${shortError}`);
+                console.error(`mmdc failed for diagram ${i + 1}:`, renderError);
+            }
+            
+            if (renderSuccess && fs.existsSync(imagePath)) {
+                const imageBuffer = fs.readFileSync(imagePath);
+                const base64Image = imageBuffer.toString('base64');
+                const imgTag = `<img src="data:image/png;base64,${base64Image}" alt="Diagram ${i + 1}" style="max-width: 100%; display: block; margin: 20px auto;">`;
+                processedMarkdown = processedMarkdown.replace(match[0], imgTag);
+            } else {
+                // Replace with a styled error placeholder so the PDF still generates
+                const escapedCode = mermaidCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const errorPlaceholder = `<div style="border: 2px solid #e74c3c; border-radius: 8px; padding: 16px; margin: 20px 0; background: #fdf0ef;">
+<p style="color: #e74c3c; font-weight: bold; margin: 0 0 8px 0;">⚠️ Mermaid diagram ${i + 1} failed to render</p>
+<pre style="background: #f6f8fa; padding: 12px; border-radius: 4px; overflow: auto; font-size: 12px;"><code>${escapedCode}</code></pre>
+</div>`;
+                processedMarkdown = processedMarkdown.replace(match[0], errorPlaceholder);
+            }
+        }
+        
+        if (failedDiagrams.length > 0) {
+            const msg = failedDiagrams.length === matches.length
+                ? `⚠️ All ${failedDiagrams.length} Mermaid diagram(s) failed to render. PDF was generated without diagrams.`
+                : `⚠️ ${failedDiagrams.length} of ${matches.length} Mermaid diagram(s) failed to render.`;
+            vscode.window.showWarningMessage(
+                `${msg}\n\nTip: Special characters like ( ) -> in node labels need quotes, e.g. G["text (with parens) -> arrow"]`,
+                'Show Details'
+            ).then(selection => {
+                if (selection === 'Show Details') {
+                    const channel = vscode.window.createOutputChannel('MD to PDF Converter');
+                    channel.appendLine('Mermaid diagram rendering errors:');
+                    channel.appendLine('='.repeat(50));
+                    failedDiagrams.forEach(d => channel.appendLine(d));
+                    channel.appendLine('');
+                    channel.appendLine('Tip: Wrap node labels containing special characters in double quotes:');
+                    channel.appendLine('  ✗  F --> G[Use ROP (temporary) -> Plan Migration]');
+                    channel.appendLine('  ✓  F --> G["Use ROP (temporary) -> Plan Migration"]');
+                    channel.show();
+                }
             });
-            
-            const imageBuffer = fs.readFileSync(imagePath);
-            const base64Image = imageBuffer.toString('base64');
-            const imgTag = `<img src="data:image/png;base64,${base64Image}" alt="Diagram ${i + 1}" style="max-width: 100%; display: block; margin: 20px auto;">`;
-            
-            processedMarkdown = processedMarkdown.replace(match[0], imgTag);
         }
     }
     
@@ -160,6 +216,12 @@ async function processMarkdownWithMermaid(markdown: string, context: vscode.Exte
         th { background-color: #f6f8fa; font-weight: 600; }
         blockquote { margin: 0; padding: 0 16px; color: #57606a; border-left: 4px solid #d0d7de; }
         img { max-width: 100%; page-break-inside: avoid; }
+        /* Mermaid diagram sizing - limit height to avoid full-page diagrams */
+        img[alt^="Diagram"] {
+            max-height: ${diagramMaxHeight}px;
+            width: auto;
+            object-fit: contain;
+        }
         a { color: #0969da; text-decoration: none; }
         ul, ol { padding-left: 2em; }
         hr { border: 0; border-top: 1px solid #d0d7de; margin: 24px 0; }

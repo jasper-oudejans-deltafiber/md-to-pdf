@@ -45,6 +45,11 @@
           "type": "number",
           "default": 1,
           "description": "Scale of the PDF (0.1 - 2.0)"
+        },
+        "mdToPdfConverter.diagramMaxHeight": {
+          "type": "number",
+          "default": 400,
+          "description": "Maximum height of Mermaid diagrams in pixels (default: 400)"
         }
       }
     }
